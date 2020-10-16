@@ -1,158 +1,331 @@
-// import { puzzlesAndSolutions } from './puzzle-strings.js';
-const textArea = document.getElementById("text-input");
-
-// Load a simple puzzle into the text area
-document.addEventListener("DOMContentLoaded", () => {
-  textArea.value =
-    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
-  textBoxChanged();
-});
-
-let validateRegex = /^[0-9.]*$/,
+const textBox = document.querySelector("#text-input"),
   solveButton = document.querySelector("#solve-button"),
   clearButton = document.querySelector("#clear-button"),
   cells = document.querySelectorAll(".sudoku-input"),
-  textBox = document.querySelector("#text-input"),
-  errorBox = document.querySelector("#error-msg");
+  errorBox = document.querySelector("#error-msg"),
+  validateRegex = /^[0-9.]*$/;
 
-let textBoxChanged = () => {
+const textBoxChanged = str => {
+  const textBoxValues = str.split("");
+
+  return cells.forEach((cell, i) => {
+    const currNum = textBoxValues[i];
+
+    validSudokuInput(currNum) && currNum !== "."
+      ? (cell.value = currNum)
+      : (cell.value = "");
+  });
+};
+
+const setTextArea = () => {
+  const cells = Array.from(document.querySelectorAll(".sudoku-input"));
+  textBox.value = cells.reduce((str, { value }) => {
+    value !== "" && validSudokuInput(value) ? (str += value) : (str += ".");
+    return str;
+  }, "");
+};
+
+const validSudokuInput = str => {
+  const possibleNum = parseInt(str);
+  return possibleNum >= 1 && possibleNum <= 9 && str;
+};
+
+const reference = () => {
+  const combine = (a, b) => {
+    const combos = [];
+    for (let i in a) {
+      for (let j in b) {
+        combos.push(a[i] + b[j]);
+      }
+    }
+
+    return combos;
+  };
+
+  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+  const cols = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+  const rowSquare = [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]];
+  const colSquare = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]];
+
+  const coords = combine(rows, cols);
+  const rowUnits = rows.map(row => combine(row, cols));
+  const colUnits = cols.map(col => combine(rows, col));
+  const boxUnits = rowSquare.reduce((acc, curr) => {
+    colSquare.forEach((col, j) => {
+      acc.push(combine(curr, colSquare[j]));
+    });
+
+    return acc;
+  }, []);
+
+  const allUnits = rowUnits.concat(colUnits, boxUnits);
+  const groups = {};
+  /* 
+    Generate an array of the three units (row, col, and box) that contain a single
+    cell/coordinate. Each unit has a length of 9.
+  */
+  groups.units = coords.reduce((acc, currCell) => {
+    acc[currCell] = allUnits.reduce((acc, currArr) => {
+      if (currArr.includes(currCell)) {
+        acc.push(currArr);
+      }
+
+      return acc;
+    }, []);
+
+    return acc;
+  }, {});
+  /* 
+    Generate a list of peers for each cell/coordinate, which
+    is a list of all cells in the three units *except* the cell
+    itself. For ex., the peers of C2 are all the cells in its 
+    three units except for C2. Each peer list has a length of 20.
+  */
+  groups.peers = coords.reduce((acc, currCell) => {
+    const flattenedArr = groups.units[currCell].reduce((acc, currArr) => {
+      currArr.forEach(el => acc.push(el));
+      return acc;
+    }, []);
+
+    acc[currCell] = Array.from(new Set(flattenedArr)).filter(
+      el => el !== currCell
+    );
+
+    return acc;
+  }, {});
+
+  return {
+    coords,
+    groups,
+    allUnits
+  };
+};
+
+// Make these available globally
+const { coords, groups, allUnits } = reference();
+
+const parsePuzzle = str => {
+  // Create a map of the incomplete sudoku puzzle at
+  // the beginning of the game with each cell and
+  // either the current value or '.'
   errorBox.innerText = "";
 
-  //   user story 5
+  const valueMap = coords.reduce((acc, coord, i) => {
+    acc[coord] = str[i];
+
+    return acc;
+  }, {});
+
+  // user story 5
   if (validateRegex.test(textBox.value) === false)
-    return errorBox.innerText = "Error: Invalid Characters";
+    return (errorBox.innerText = "Error: Invalid Characters");
 
   // user story 9
-  if (textBox.value.length !== 81)
-    return errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
+  if (str.length !== 81)
+    return (errorBox.innerText =
+      "Error: Expected puzzle to be 81 characters long.");
 
-  //   user story 2
-  let textBoxValues = textBox.value.split("");
-  textBoxValues.forEach((value, index) => cells[index].value = value);
+  return valueMap;
 };
 
-let gridChanged = () => {
-  let textString = "";
+const solve = (puzzle = textBox.value) => {
+  /*
+    User clicks solve button
+  */
+  const digits = "123456789";
+  let inputGrid = parsePuzzle(puzzle);
+  // Bail out if the puzzle is not valid
+  if (!inputGrid) return null;
+  // Filter out cells with no value
+  inputGrid = Object.keys(inputGrid).reduce((acc, key) => {
+    const currVal = inputGrid[key];
+    if (currVal !== ".") {
+      acc[key] = currVal;
+    }
 
-  // user story 4
-  cells.forEach(cell => textString += cell.value.toString());
+    return acc;
+  }, {});
+  // 1-9 for each coordinate
+  let outputGrid = coords.reduce((acc, coord) => {
+    acc[coord] = digits;
 
-  //   user story 6
-  errorBox.innerText = "";
-  if (validateRegex.test(textString) === false)
-    return errorBox.innerText = "Error: Invalid Characters";
+    return acc;
+  }, {});
 
-  //   user story 9
-  if (textString.length !== 81)
-    return errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
+  /* 
+    Loop through the known positions on the input grid 
+    and begin eliminating other possibilities for cells 
+    without a value -- first pass of constraint propagation
+  */
+  Object.entries(inputGrid).forEach(([position, value]) => {
+    outputGrid = confirmValue(outputGrid, position, value);
+  });
 
-  textBox.value = textString;
-};
-
-// check if number placement is allowed
-let canPlace = (board, row, col, value) => {
-  // Check Column
-  for (let i = 0; i < 9; i++)
-    if (board[i][col] === value) return false;
-
-  // Check Row
-  for (let j = 0; j < 9; j++)
-    if (board[row][j] === value) return false;
-
-  // Check Box Placement
-  let boxTopRow = parseInt(row / 3) * 3; // Returns index of top row of box (0, 3, or 6)
-  let boxLeftColumn = parseInt(col / 3) * 3; // Returns index of left column of box (0, 3 or 6)
-
-  for (let k = boxTopRow; k < boxTopRow + 3; k++) // Looks through rows
-    for (let l = boxLeftColumn; l < boxLeftColumn + 3; l++) // Looks through columns
-      if (board[k][l] == value) return false;
-
-  return true;
-};
-
-// attempt to solve the puzzle from a given cell
-let solveFromCell = (board, row, col) => {
-  // If on column 9 (outside row), move to next row and reset column to zero
-  if (col === 9) {
-    col = 0;
-    row++;
+  // If puzzle is complete after first pass, return it
+  if (validatePuzzle(outputGrid)) {
+    return outputGrid;
   }
 
-  // If on row 9 (outside board), the solution is complete, so return the board
-  if (row === 9) return board;
+  // Guess digits for incomplete puzzle
+  return guessDigit(outputGrid);
+};
 
-  // If already filled out (not empty) then skip to next column
-  if (board[row][col] != ".") return solveFromCell(board, row, col + 1);
+const confirmValue = (grid, pos, val) => {
+  const remainingValues = grid[pos].replace(val, "");
 
-  // Try placing in values. Start with 1 and check if okay to place in cell.
-  // If so,run the algorithm from the next cell (col + 1), and see if false
-  // is not returned. A returned board indicates true, since a solution was
-  // found. If false is returned  empty out the cell, and try with next value
-  for (let i = 1; i < 10; i++) {
-    let valueToPlace = i.toString();
-    if (canPlace(board, row, col, valueToPlace)) {
-      board[row][col] = valueToPlace;
-      if (solveFromCell(board, row, col + 1) != false) return board;
-      else board[row][col] = ".";
+  remainingValues.split("").forEach(val => {
+    grid = eliminate(grid, pos, val);
+  });
+
+  return grid;
+};
+
+const eliminate = (grid, pos, val) => {
+  if (!grid) return false;
+
+  if (!grid[pos].includes(val)) return grid; // Exit if we've already eliminated the value from the grid/cell
+
+  grid[pos] = grid[pos].replace(val, ""); // Set cell value if known, otherwise remove possibility
+
+  if (grid[pos].length === 0) {
+    // If there are no possibilities we made a wrong guess somewhere
+    return false;
+  } else if (grid[pos].length === 1) {
+    // Remove known cell values from all peers recursively
+    groups.peers[pos].forEach(peer => {
+      grid = eliminate(grid, peer, grid[pos]);
+
+      if (!grid) return false;
+    });
+  }
+
+  const possibilities = groups.units[pos].reduce((acc, unit) => {
+    return unit
+      .map(coord => {
+        if (grid[coord] && grid[coord].indexOf(val) > -1) return coord;
+      })
+      .filter(Boolean);
+  }, []);
+
+  if (possibilities.length === 0) {
+    // We made a mistake somewhere if there are no possible values for a coordinate
+    return false;
+  } else if (possibilities.length === 1 && grid[possibilities[0]].length > 1) {
+    // There is only one possible position, but the grid still lists multiple possibilities, confirm the value before removing it
+    if (!confirmValue(grid, possibilities[0], val)) {
+      return false;
     }
   }
 
-  // If not found a solution yet, return false
-  return false;
+  return grid;
 };
 
-// recursive backtracking sudoku algo step 2
-let generateBoard = values => {
-  let board = [[], [], [], [], [], [], [], [], []],
-    boardRow = -1;
+const guessDigit = grid => {
+  /* 
+    Guess a digit with the fewest number 
+    of possibilities
+  */
+  if (!grid) return false;
 
-  for (let i = 0; i < values.length; i++) {
-    if (i % 9 === 0) boardRow += 1;
-    board[boardRow].push(values[i]);
+  // End if there's a possible valid solution
+  if (validatePuzzle(grid)) return grid;
+
+  // Sort by cells with the least number of possibilities
+  const possibilities = grid
+    .filter(x => x.length > 1)
+    .sort((a, b) => {
+      return a[Object.keys(a)[0]].length - b[Object.keys(b)[0]].length;
+    });
+
+  const pos = Object.keys(possibilities[0])[0];
+
+  for (let i in grid[pos]) {
+    const val = grid[pos][i];
+    const possibleSolution = guessDigit(
+      confirmValue(Object.assign({}, grid), pos, val)
+    );
+
+    if (possibleSolution) return possibleSolution;
   }
-
-  return board;
 };
 
-// recursive backtracking sudoku algo
-let solveButtonPressed = () => {
-  let textBoxValues = textBox.value.split(""),
-    originalBoard = generateBoard(textBoxValues),
-    solution = solveFromCell(originalBoard, 0, 0);
+const validatePuzzle = puzzle => {
+  if (!puzzle) return false;
 
-  // user story 7
-  errorBox.innerText = "";
-  if (solution === false) return errorBox.innerText = "No Solution :(";
+  const validUnit = "123456789".split("");
+  /* 
+    Create a 2D array of puzzle units with 
+    sorted values for each cell 
+  */
+  const puzzleUnits = allUnits.map(unit => {
+    return unit
+      .map(cell => {
+        return puzzle[cell];
+      })
+      .sort();
+  });
 
-  let solutionString = "";
-  for (let i = 0; i < solution.length; i++)
-    for (let j = 0; j < solution[i].length; j++)
-      solutionString += solution[i][j].toString();
+  /* 
+    Check that every puzzle unit matches a
+    valid unit of the digits 1-9 
+  */
 
-  textBox.value = solutionString;
-  textBoxChanged();
+  return puzzleUnits.every(arr => {
+    return validUnit.every(e => arr.includes(e));
+  });
 };
 
-// user story 1
-textBox.oninput = textBoxChanged;
-
-// user story 3
-cells.forEach(cell => cell.oninput = gridChanged);
-
-// recursive backtracking algo step 1
-solveButton.onclick = solveButtonPressed;
+const showSolution = obj => {
+  // Only handle cases where the puzzle is valid
+  if (obj) {
+    const solutionStr = Object.values(obj)
+      .join()
+      .replace(/\,/g, "");
+    textBoxChanged(solutionStr), setTextArea();
+  }
+};
 
 // user story 10
-clearButton.onclick = () => {
+const clearInput = () => {
   textBox.value = "";
   errorBox.innerText = "";
-  cells.forEach(cell => cell.value = "");
+  cells.forEach(cell => (cell.value = ""));
 };
+clearButton.onclick = clearInput;
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Load a simple puzzle into the text area
+  textBox.value =
+    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
+  textBoxChanged(textBox.value);
+
+  Array.from(cells).forEach(input =>
+    input.addEventListener("input", setTextArea)
+  );
+  solveButton.addEventListener(
+    "click",
+    () => {
+      showSolution(solve());
+    },
+    false
+  );
+});
 
 // Export your functions for testing in Node.
 // `try` prevents errors on  the client side
 try {
   module.exports = {
-    
+    validSudokuInput,
+    validatePuzzle,
+    parsePuzzle,
+    solve,
+    setTextArea,
+    setGrid: textBoxChanged,
+    clearInput,
+    showSolution
   };
-} catch (e) { }
+} catch (e) {
+  console.log(e);
+}
+
+// clearInput(), showSolution(), solve(input)
