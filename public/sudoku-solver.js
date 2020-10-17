@@ -5,14 +5,32 @@ const textBox = document.querySelector("#text-input"),
   errorBox = document.querySelector("#error-msg"),
   validateRegex = /^[0-9.]*$/;
 
+const gridChanged = () => {
+  let textString = "";
+
+  // user story 4
+  cells.forEach(cell => (textString += cell.value.toString()));
+
+  //   user story 6
+  errorBox.innerText = "";
+  if (validateRegex.test(textString) === false)
+    return (errorBox.innerText = "Error: Invalid Characters");
+
+  //   user story 9
+  if (textString.length !== 81)
+    return (errorBox.innerText =
+      "Error: Expected puzzle to be 81 characters long.");
+
+  textBox.value = textString;
+};
+
+//   user story 2
 const textBoxChanged = str => {
   const textBoxValues = str.split("");
 
-  return cells.forEach((cell, i) => {
-    const currNum = textBoxValues[i];
-
-    validSudokuInput(currNum) && currNum !== "."
-      ? (cell.value = currNum)
+  return cells.forEach((cell, index) => {
+    validSudokuInput(textBoxValues[index]) && textBoxValues[index] !== "."
+      ? (cell.value = textBoxValues[index])
       : (cell.value = "");
   });
 };
@@ -60,10 +78,9 @@ const reference = () => {
 
   const allUnits = rowUnits.concat(colUnits, boxUnits);
   const groups = {};
-  /* 
-    Generate an array of the three units (row, col, and box) that contain a single
-    cell/coordinate. Each unit has a length of 9.
-  */
+
+  // Generate an array of the three units (row, col, and box) that
+  // contain a single cell/coordinate. Each unit has a length of 9.
   groups.units = coords.reduce((acc, currCell) => {
     acc[currCell] = allUnits.reduce((acc, currArr) => {
       if (currArr.includes(currCell)) {
@@ -75,12 +92,10 @@ const reference = () => {
 
     return acc;
   }, {});
-  /* 
-    Generate a list of peers for each cell/coordinate, which
-    is a list of all cells in the three units *except* the cell
-    itself. For ex., the peers of C2 are all the cells in its 
-    three units except for C2. Each peer list has a length of 20.
-  */
+
+  // Generate a list of peers for each cell/coordinate, which is a list of all
+  // cells in the three units *except* the cell itself. E.g.: the peers of C2
+  // are the cells in its 3 units except for C2. Each peer list is 20 long.
   groups.peers = coords.reduce((acc, currCell) => {
     const flattenedArr = groups.units[currCell].reduce((acc, currArr) => {
       currArr.forEach(el => acc.push(el));
@@ -105,9 +120,8 @@ const reference = () => {
 const { coords, groups, allUnits } = reference();
 
 const parsePuzzle = str => {
-  // Create a map of the incomplete sudoku puzzle at
-  // the beginning of the game with each cell and
-  // either the current value or '.'
+  // Create a map of the incomplete sudoku puzzle at the beginning
+  // of the game with each cell and either the current value or '.'
   errorBox.innerText = "";
 
   const valueMap = coords.reduce((acc, coord, i) => {
@@ -128,10 +142,8 @@ const parsePuzzle = str => {
   return valueMap;
 };
 
+// User clicks solve button
 const solve = (puzzle = textBox.value) => {
-  /*
-    User clicks solve button
-  */
   const digits = "123456789";
   let inputGrid = parsePuzzle(puzzle);
   // Bail out if the puzzle is not valid
@@ -152,11 +164,9 @@ const solve = (puzzle = textBox.value) => {
     return acc;
   }, {});
 
-  /* 
-    Loop through the known positions on the input grid 
-    and begin eliminating other possibilities for cells 
-    without a value -- first pass of constraint propagation
-  */
+  // Loop through the known positions on the input grid
+  // and begin eliminating other possibilities for cells
+  // without a value -- first pass of constraint propagation
   Object.entries(inputGrid).forEach(([position, value]) => {
     outputGrid = confirmValue(outputGrid, position, value);
   });
@@ -211,7 +221,8 @@ const eliminate = (grid, pos, val) => {
     // We made a mistake somewhere if there are no possible values for a coordinate
     return false;
   } else if (possibilities.length === 1 && grid[possibilities[0]].length > 1) {
-    // There is only one possible position, but the grid still lists multiple possibilities, confirm the value before removing it
+    // There is only one possible position, but the grid still lists
+    //  multiple possibilities, confirm the value before removing it
     if (!confirmValue(grid, possibilities[0], val)) {
       return false;
     }
@@ -221,10 +232,7 @@ const eliminate = (grid, pos, val) => {
 };
 
 const guessDigit = grid => {
-  /* 
-    Guess a digit with the fewest number 
-    of possibilities
-  */
+  // Guess a digit with the fewest number of possibilities
   if (!grid) return false;
 
   // End if there's a possible valid solution
@@ -253,10 +261,7 @@ const validatePuzzle = puzzle => {
   if (!puzzle) return false;
 
   const validUnit = "123456789".split("");
-  /* 
-    Create a 2D array of puzzle units with 
-    sorted values for each cell 
-  */
+  // Create a 2D array of puzzle units with sorted values for each cell
   const puzzleUnits = allUnits.map(unit => {
     return unit
       .map(cell => {
@@ -265,11 +270,7 @@ const validatePuzzle = puzzle => {
       .sort();
   });
 
-  /* 
-    Check that every puzzle unit matches a
-    valid unit of the digits 1-9 
-  */
-
+  // Check that every puzzle unit matches a valid unit of the digits 1-9
   return puzzleUnits.every(arr => {
     return validUnit.every(e => arr.includes(e));
   });
@@ -298,18 +299,16 @@ document.addEventListener("DOMContentLoaded", () => {
   textBox.value =
     "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
   textBoxChanged(textBox.value);
-
-  Array.from(cells).forEach(input =>
-    input.addEventListener("input", setTextArea)
-  );
-  solveButton.addEventListener(
-    "click",
-    () => {
-      showSolution(solve());
-    },
-    false
-  );
 });
+
+// user story 1
+textBox.onchange = textBoxChanged;
+
+// user story 3
+cells.forEach(cell => (cell.oninput = gridChanged));
+
+// recursive backtracking algo step 1
+solveButton.onclick = () => showSolution(solve());
 
 // Export your functions for testing in Node.
 // `try` prevents errors on  the client side
