@@ -1,91 +1,88 @@
 const textBox = document.querySelector("#text-input"),
-  solveButton = document.querySelector("#solve-button"),
-  clearButton = document.querySelector("#clear-button"),
   cells = document.querySelectorAll(".sudoku-input"),
   errorBox = document.querySelector("#error-msg"),
-  validateRegex = /^[0-9.]*$/;
+  rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+  validateRegex = /^[1-9.]*$/;
+let globalBoardArray, textString
 
-const gridChanged = () => {
-  let textString = "";
+document.addEventListener("DOMContentLoaded", () => {
+  // Load a simple puzzle into the text area
+  textBox.value =
+    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
+  textBoxChanged(textBox.value);
+});
 
+const gridChanged = function() {
   // user story 4
   cells.forEach(cell => (textString += cell.value.toString()));
 
-  //   user story 6
-  errorBox.innerText = "";
+  // user story 6
   if (validateRegex.test(textString) === false)
     return (errorBox.innerText = "Error: Invalid Characters");
 
-  //   user story 9
+  // user story 9
   if (textString.length !== 81)
     return (errorBox.innerText =
       "Error: Expected puzzle to be 81 characters long.");
 
-  textBox.value = textString;
+  const [letter, num] = this.id.split(""),
+    row = rows.indexOf(letter),
+    col = num - 1;
+
+  (errorBox.innerText = ""), (textBox.value = textString);
+  globalBoardArray[row][col] = this.value !== "" ? this.value : ".";
 };
 
 //   user story 2
 const textBoxChanged = str => {
   const textBoxValues = str.split("");
 
-  return cells.forEach((cell, index) => {
+  return cells.forEach((cell, index) =>
     validSudokuInput(textBoxValues[index]) && textBoxValues[index] !== "."
       ? (cell.value = textBoxValues[index])
-      : (cell.value = "");
-  });
+      : (cell.value = "")
+  );
 };
 
 const setTextArea = () => {
-  const cells = Array.from(document.querySelectorAll(".sudoku-input"));
-  textBox.value = cells.reduce((str, { value }) => {
+  textBox.value = Array.from(cells).reduce((str, { value }) => {
     value !== "" && validSudokuInput(value) ? (str += value) : (str += ".");
     return str;
   }, "");
 };
 
-const validSudokuInput = str => {
-  const possibleNum = parseInt(str);
-  return possibleNum >= 1 && possibleNum <= 9 && str;
-};
+const validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
 
 const reference = () => {
   const combine = (a, b) => {
     const combos = [];
-    for (let i in a) {
-      for (let j in b) {
-        combos.push(a[i] + b[j]);
-      }
-    }
+    for (let i in a) for (let j in b) combos.push(a[i] + b[j]);
 
     return combos;
   };
 
-  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
-  const cols = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-  const rowSquare = [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]];
-  const colSquare = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]];
+  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+    cols = ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    rowSquare = [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]],
+    colSquare = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]],
+    coords = combine(rows, cols),
+    rowUnits = rows.map(row => combine(row, cols)),
+    colUnits = cols.map(col => combine(rows, col));
 
-  const coords = combine(rows, cols);
-  const rowUnits = rows.map(row => combine(row, cols));
-  const colUnits = cols.map(col => combine(rows, col));
   const boxUnits = rowSquare.reduce((acc, curr) => {
-    colSquare.forEach((col, j) => {
-      acc.push(combine(curr, colSquare[j]));
-    });
+    colSquare.forEach((_, j) => acc.push(combine(curr, colSquare[j])));
 
     return acc;
   }, []);
 
-  const allUnits = rowUnits.concat(colUnits, boxUnits);
-  const groups = {};
+  const allUnits = rowUnits.concat(colUnits, boxUnits),
+    groups = {};
 
   // Generate an array of the three units (row, col, and box) that
   // contain a single cell/coordinate. Each unit has a length of 9.
   groups.units = coords.reduce((acc, currCell) => {
     acc[currCell] = allUnits.reduce((acc, currArr) => {
-      if (currArr.includes(currCell)) {
-        acc.push(currArr);
-      }
+      if (currArr.includes(currCell)) acc.push(currArr);
 
       return acc;
     }, []);
@@ -109,11 +106,7 @@ const reference = () => {
     return acc;
   }, {});
 
-  return {
-    coords,
-    groups,
-    allUnits
-  };
+  return { coords, groups, allUnits };
 };
 
 // Make these available globally
@@ -144,48 +137,40 @@ const parsePuzzle = str => {
 
 // User clicks solve button
 const solve = (puzzle = textBox.value) => {
-  const digits = "123456789";
   let inputGrid = parsePuzzle(puzzle);
   // Bail out if the puzzle is not valid
   if (!inputGrid) return null;
   // Filter out cells with no value
   inputGrid = Object.keys(inputGrid).reduce((acc, key) => {
-    const currVal = inputGrid[key];
-    if (currVal !== ".") {
-      acc[key] = currVal;
-    }
-
+    if (inputGrid[key] !== ".") acc[key] = inputGrid[key];
     return acc;
   }, {});
   // 1-9 for each coordinate
   let outputGrid = coords.reduce((acc, coord) => {
-    acc[coord] = digits;
-
+    acc[coord] = "123456789";
     return acc;
   }, {});
 
   // Loop through the known positions on the input grid
   // and begin eliminating other possibilities for cells
   // without a value -- first pass of constraint propagation
-  Object.entries(inputGrid).forEach(([position, value]) => {
-    outputGrid = confirmValue(outputGrid, position, value);
-  });
+  Object.entries(inputGrid).forEach(
+    ([position, value]) =>
+      (outputGrid = confirmValue(outputGrid, position, value))
+  );
 
   // If puzzle is complete after first pass, return it
-  if (validatePuzzle(outputGrid)) {
-    return outputGrid;
-  }
+  if (validatePuzzle(outputGrid)) return outputGrid;
 
   // Guess digits for incomplete puzzle
   return guessDigit(outputGrid);
 };
 
 const confirmValue = (grid, pos, val) => {
-  const remainingValues = grid[pos].replace(val, "");
-
-  remainingValues.split("").forEach(val => {
-    grid = eliminate(grid, pos, val);
-  });
+  grid[pos]
+    .replace(val, "")
+    .split("")
+    .forEach(val => (grid = eliminate(grid, pos, val)));
 
   return grid;
 };
@@ -197,36 +182,32 @@ const eliminate = (grid, pos, val) => {
 
   grid[pos] = grid[pos].replace(val, ""); // Set cell value if known, otherwise remove possibility
 
-  if (grid[pos].length === 0) {
-    // If there are no possibilities we made a wrong guess somewhere
-    return false;
-  } else if (grid[pos].length === 1) {
+  // If there are no possibilities we made a wrong guess somewhere
+  if (grid[pos].length === 0) return false;
+  else if (grid[pos].length === 1)
     // Remove known cell values from all peers recursively
     groups.peers[pos].forEach(peer => {
       grid = eliminate(grid, peer, grid[pos]);
-
       if (!grid) return false;
     });
-  }
 
-  const possibilities = groups.units[pos].reduce((acc, unit) => {
-    return unit
-      .map(coord => {
-        if (grid[coord] && grid[coord].indexOf(val) > -1) return coord;
-      })
-      .filter(Boolean);
-  }, []);
+  const possibilities = groups.units[pos].reduce(
+    (_, unit) =>
+      unit
+        .map(coord => {
+          if (grid[coord] && grid[coord].indexOf(val) > -1) return coord;
+        })
+        .filter(Boolean),
+    []
+  );
 
-  if (possibilities.length === 0) {
-    // We made a mistake somewhere if there are no possible values for a coordinate
-    return false;
-  } else if (possibilities.length === 1 && grid[possibilities[0]].length > 1) {
-    // There is only one possible position, but the grid still lists
-    //  multiple possibilities, confirm the value before removing it
-    if (!confirmValue(grid, possibilities[0], val)) {
+  // We made a mistake somewhere if there are no possible values for a coordinate
+  if (possibilities.length === 0) return false;
+  else if (possibilities.length === 1 && grid[possibilities[0]].length > 1)
+    if (!confirmValue(grid, possibilities[0], val))
+      // There is only one possible position, but the grid still lists
+      //  multiple possibilities, confirm the value before removing it
       return false;
-    }
-  }
 
   return grid;
 };
@@ -241,9 +222,7 @@ const guessDigit = grid => {
   // Sort by cells with the least number of possibilities
   const possibilities = grid
     .filter(x => x.length > 1)
-    .sort((a, b) => {
-      return a[Object.keys(a)[0]].length - b[Object.keys(b)[0]].length;
-    });
+    .sort((a, b) => a[Object.keys(a)[0]].length - b[Object.keys(b)[0]].length);
 
   const pos = Object.keys(possibilities[0])[0];
 
@@ -262,18 +241,10 @@ const validatePuzzle = puzzle => {
 
   const validUnit = "123456789".split("");
   // Create a 2D array of puzzle units with sorted values for each cell
-  const puzzleUnits = allUnits.map(unit => {
-    return unit
-      .map(cell => {
-        return puzzle[cell];
-      })
-      .sort();
-  });
+  let puzzleUnits = allUnits.map(unit => unit.map(cell => puzzle[cell]).sort());
 
   // Check that every puzzle unit matches a valid unit of the digits 1-9
-  return puzzleUnits.every(arr => {
-    return validUnit.every(e => arr.includes(e));
-  });
+  return puzzleUnits.every(arr => validUnit.every(e => arr.includes(e)));
 };
 
 const showSolution = obj => {
@@ -292,23 +263,16 @@ const clearInput = () => {
   errorBox.innerText = "";
   cells.forEach(cell => (cell.value = ""));
 };
-clearButton.onclick = clearInput;
-
-document.addEventListener("DOMContentLoaded", () => {
-  // Load a simple puzzle into the text area
-  textBox.value =
-    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
-  textBoxChanged(textBox.value);
-});
+document.querySelector("#clear-button").onclick = clearInput;
 
 // user story 1
-textBox.onchange = textBoxChanged;
+textBox.oninput = textBoxChanged;
 
 // user story 3
-cells.forEach(cell => (cell.oninput = gridChanged));
+Array.from(cells).forEach(cell => (cell.oninput = gridChanged));
 
 // recursive backtracking algo step 1
-solveButton.onclick = () => showSolution(solve());
+document.querySelector("#solve-button").onclick = () => showSolution(solve());
 
 // Export your functions for testing in Node.
 // `try` prevents errors on  the client side

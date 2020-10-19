@@ -10,7 +10,7 @@ let Solver;
 const puzzle = '..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..',
   solution = '769235418851496372432178956174569283395842761628713549283657194516924837947381625';
 
-suite('UnitTests', () => {
+suite('Unit Tests', () => {
   suiteSetup(() => {
     // Mock the DOM for testing and load Solver
     return JSDOM.fromFile('./views/index.html')
