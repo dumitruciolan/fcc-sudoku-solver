@@ -1,55 +1,72 @@
-const textArea = document.getElementById("text-input");
+const cells = document.querySelectorAll(".sudoku-input"),
+  solveBtn = document.querySelector("#solve-button"),
+  textBox = document.querySelector("#text-input"),
+  errorBox = document.querySelector("#error-msg");
 
 // Load a simple puzzle into the text area
 document.addEventListener("DOMContentLoaded", () => {
-  textArea.value =
+  document.querySelector("#text-input").value =
     "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
   textBoxChanged();
 });
 
-let validateRegex = /^[1-9.]*$/,
-  solveButton = document.querySelector("#solve-button"),
-  clearButton = document.querySelector("#clear-button"),
-  cells = document.querySelectorAll(".sudoku-input"),
-  textBox = document.querySelector("#text-input"),
-  errorBox = document.querySelector("#error-msg");
-
-let textBoxChanged = () => {
-  errorBox.innerText = "";
-
+const textBoxChanged = () => {
   //   user story 5
-  if (validateRegex.test(textBox.value) === false)
+  if (/^[1-9.]*$/.test(textBox.value) === false) {
+    solveBtn.onclick = "";
     errorBox.innerText = "Error: Invalid Characters";
+  }
 
   // user story 9
-  if (textBox.value.length !== 81)
+  else if (textBox.value.length !== 81) {
+    solveBtn.onclick = "";
     errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
+  }
 
-  //   user story 2
+  // recursive backtracking algo step 1
+  else {
+    solveBtn.onclick = solveButtonPressed;
+    errorBox.innerText = "";
+  }
+
+  // user story 2
   let textBoxValues = textBox.value.split("");
-  return textBoxValues.forEach((value, index) => (cells[index].value = value));
+  textBoxValues.forEach((value, index) => (cells[index].value = value));
+  return textBoxValues;
 };
 
-let gridChanged = () => {
+const gridChanged = () => {
   let textString = "";
 
   // user story 4
   cells.forEach(cell => (textString += cell.value.toString()));
 
-  //   user story 6
-  errorBox.innerText = "";
-  if (validateRegex.test(textString) === false)
+  // user story 6
+  if (/^[1-9.]*$/.test(textString) === false) {
+    solveBtn.onclick = "";
     errorBox.innerText = "Error: Invalid Characters";
+  }
 
-  //   user story 9
-  if (textString.length !== 81)
+  // user story 9
+  else if (textString.length !== 81) {
+    solveBtn.onclick = "";
     errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
+  }
 
-  return (textBox.value = textString);
+  // recursive backtracking algo step 1
+  else {
+    solveBtn.onclick = solveButtonPressed;
+    errorBox.innerText = "";
+  }
+
+  return (textBox.value = Array.from(cells).reduce((str, { value }) => {
+    value !== "" && validSudokuInput(value) ? (str += value) : (str += ".");
+    return str;
+  }, ""));
 };
 
 // check if number placement is allowed
-let canPlace = (board, row, col, value) => {
+const canPlace = (board, row, col, value) => {
   // Check Column
   for (let i = 0; i < 9; i++) if (board[i][col] === value) return false;
 
@@ -59,24 +76,17 @@ let canPlace = (board, row, col, value) => {
   // Check Box Placement
   let boxTopRow = parseInt(row / 3) * 3; // Returns index of top row of box (0, 3, or 6)
   let boxLeftColumn = parseInt(col / 3) * 3; // Returns index of left column of box (0, 3 or 6)
-
-  for (
-    let k = boxTopRow;
-    k < boxTopRow + 3;
-    k++ // Looks through rows
-  )
-    for (
-      let l = boxLeftColumn;
-      l < boxLeftColumn + 3;
-      l++ // Looks through columns
-    )
+  // Looks through rows
+  for (let k = boxTopRow; k < boxTopRow + 3; k++)
+    // Looks through columns
+    for (let l = boxLeftColumn; l < boxLeftColumn + 3; l++)
       if (board[k][l] == value) return false;
 
   return true;
 };
 
 // attempt to solve the puzzle from a given cell
-let solveFromCell = (board, row, col) => {
+const solveFromCell = (board, row, col) => {
   // If on column 9 (outside row), move to next row and reset column to zero
   if (col === 9) {
     col = 0;
@@ -97,7 +107,7 @@ let solveFromCell = (board, row, col) => {
     let valueToPlace = i.toString();
     if (canPlace(board, row, col, valueToPlace)) {
       board[row][col] = valueToPlace;
-      if (solveFromCell(board, row, col + 1) != false) return board;
+      if (solveFromCell(board, row, col + 1) !== false) return board;
       else board[row][col] = ".";
     }
   }
@@ -107,7 +117,7 @@ let solveFromCell = (board, row, col) => {
 };
 
 // recursive backtracking sudoku algo step 2
-let generateBoard = values => {
+const generateBoard = values => {
   let board = [[], [], [], [], [], [], [], [], []],
     boardRow = -1;
 
@@ -119,22 +129,18 @@ let generateBoard = values => {
   return board;
 };
 
-const setTextArea = () => {
-  textBox.value = Array.from(cells).reduce((str, { value }) => {
-    value !== "" && validSudokuInput(value) ? (str += value) : (str += ".");
-    return str;
-  }, "");
-};
-
 // recursive backtracking sudoku algo
-let solveButtonPressed = () => {
+const solveButtonPressed = () => {
   let textBoxValues = textBox.value.split(""),
-    originalBoard = generateBoard(textBoxValues),
-    solution = solveFromCell(originalBoard, 0, 0);
+    solution = solveFromCell(generateBoard(textBoxValues), 0, 0);
 
   // user story 7
   errorBox.innerText = "";
-  if (solution === false) return (errorBox.innerText = "No Solution.");
+  if (solution === false) {
+    errorBox.innerText = "No Solution.";
+    solveBtn.onclick = console.log(errorBox.innerText);
+    return;
+  }
 
   let solutionString = "";
   for (let i = 0; i < solution.length; i++)
@@ -151,16 +157,13 @@ textBox.oninput = textBoxChanged;
 // user story 3
 cells.forEach(cell => (cell.oninput = gridChanged));
 
-// recursive backtracking algo step 1
-solveButton.onclick = solveButtonPressed;
-
 // user story 10
 const clearInput = () => {
   textBox.value = "";
   errorBox.innerText = "";
   cells.forEach(cell => (cell.value = ""));
 };
-clearButton.onclick = clearInput;
+document.querySelector("#clear-button").onclick = clearInput;
 
 const validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
 
@@ -168,19 +171,16 @@ const validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
 // `try` prevents errors on  the client side
 try {
   module.exports = {
-    validSudokuInput,
-    parsePuzzle: textBoxChanged,
     textBoxChanged,
     gridChanged,
-    validatePuzzle: canPlace,
-    solve: solveFromCell,
-    generateBoard,
-    setTextArea,
-    showSolution: solveButtonPressed,
-    clearInput
+    canPlace,
+    solveButtonPressed,
+    clearInput,
+    validSudokuInput
   };
 } catch (e) {
   console.log(e);
 }
 
-// clearInput(), showSolution(), solve(input), showSolution(solve(input))
+// invalid complete puzzles don't fail
+// create use cases for successful / unsuccessful complete solution
