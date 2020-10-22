@@ -35,7 +35,7 @@ suite("Unit Tests", () => {
       done();
     });
 
-    // Invalid characters or numbers are not 
+    // Invalid characters or numbers are not
     // accepted as valid input for the puzzle grid
     test('Invalid characters (anything other than "1-9") are not accepted', done => {
       const input = ["!", "a", "/", "+", "-", "0", "10", 0, "."];
@@ -46,10 +46,9 @@ suite("Unit Tests", () => {
     });
   });
 
-  suite("Function parsePuzzle(input)", () => {
+  suite("Function textBoxChanged(input)", () => {
     test("Parses a valid puzzle string into an object", done => {
-
-      assert.deepStrictEqual(Solver.parsePuzzle(), {});
+      assert.deepEqual(Solver.textBoxChanged(), []);
       done();
     });
 
@@ -59,21 +58,24 @@ suite("Unit Tests", () => {
       const shortStr = "83.9.....6.62.71...9......1945....4.37.4.3..6..";
       const longStr = `${puzzle}.`;
       const errorMsg = "Error: Expected puzzle to be 81 characters long.";
-      const errorDiv = document.getElementById("error-msg");
+      const errorDiv = document.querySelector("#error-msg");
 
-      Solver.parsePuzzle(shortStr);
+      Solver.textBoxChanged(shortStr);
       assert.strictEqual(errorDiv.innerText, errorMsg);
 
-      Solver.parsePuzzle(longStr);
+      Solver.textBoxChanged(longStr);
       assert.strictEqual(errorDiv.innerText, errorMsg);
       done();
     });
   });
 
-  suite("Function validatePuzzle(input)", () => {
+  suite("Function canPlace(input)", () => {
     // Valid complete puzzles pass
     test("Valid puzzles pass", done => {
-      assert.equal(Solver.validatePuzzle(puzzle), true);
+      document.querySelector("#text-input").value = solution;
+      Solver.solveButtonPressed()
+      
+      assert.equal(document.querySelector("#error-msg").innerText, "");
       done();
     });
 
@@ -81,10 +83,10 @@ suite("Unit Tests", () => {
     test("Invalid puzzles fail", done => {
       const input =
         "779235418851496372432178956174569283395842761628713549283657194516924837947381625";
-      document.getElementById("text-input").value = input;
-
-      Solver.parsePuzzle();
-      assert.equal(Solver.validatePuzzle(input), false);
+      document.querySelector("#text-input").value = input;
+      Solver.solveButtonPressed()
+      
+      assert.equal(document.querySelector("#error-msg").innerText, "Invalid Solution.");
       done();
     });
   });
@@ -92,11 +94,11 @@ suite("Unit Tests", () => {
   suite("Function showSolution()", () => {
     // Returns the expected solution for a valid, incomplete puzzle
     test("Returns the expected solution for an incomplete puzzle", done => {
-      const textArea = document.getElementById("text-input");
+      const textArea = document.querySelector("#text-input");
       textArea.value = puzzle;
 
-      Solver.showSolution();
-      assert.deepStrictEqual(textArea.value, solution);
+      Solver.solveButtonPressed();
+      assert.deepEqual(textArea.value, solution);
       done();
     });
   });
