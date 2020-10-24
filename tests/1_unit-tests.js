@@ -7,12 +7,6 @@ const chai = require("chai"),
   { JSDOM } = jsdom;
 let Solver;
 
-// used by tests
-const puzzle =
-    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..",
-  solution =
-    "769235418851496372432178956174569283395842761628713549283657194516924837947381625";
-
 suite("Unit Tests", () => {
   suiteSetup(() => {
     // Mock the DOM for testing and load Solver
@@ -24,8 +18,7 @@ suite("Unit Tests", () => {
     });
   });
 
-  // Only the digits 1-9 are accepted
-  // as valid input for the puzzle grid
+  // Only the digits 1-9 are accepted as valid input for the puzzle grid
   suite("Function validSudokuInput(input)", () => {
     test('Valid "1-9" characters', done => {
       const input = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -46,7 +39,8 @@ suite("Unit Tests", () => {
     });
   });
 
-  suite("Function textBoxChanged(input)", () => {
+  // fix this
+  suite("Function textBoxChanged()", () => {
     test("Parses a valid puzzle string into an object", done => {
       assert.deepEqual(Solver.textBoxChanged(), []);
       done();
@@ -56,7 +50,7 @@ suite("Unit Tests", () => {
     // puzzle to be 81 characters long." in the `div` with the id "error-msg"
     test("Shows an error for puzzles that are not 81 numbers long", done => {
       const shortStr = "83.9.....6.62.71...9......1945....4.37.4.3..6..";
-      const longStr = `${puzzle}.`;
+      const longStr = `${Solver.puzzle}.`;
       const errorMsg = "Error: Expected puzzle to be 81 characters long.";
       const errorDiv = document.querySelector("#error-msg");
 
@@ -69,12 +63,12 @@ suite("Unit Tests", () => {
     });
   });
 
-  suite("Function canPlace(input)", () => {
+  suite("Function solveButtonPressed()", () => {
     // Valid complete puzzles pass
     test("Valid puzzles pass", done => {
-      document.querySelector("#text-input").value = solution;
-      Solver.solveButtonPressed()
-      
+      document.querySelector("#text-input").value = Solver.solution;
+      Solver.solveButtonPressed();
+
       assert.equal(document.querySelector("#error-msg").innerText, "");
       done();
     });
@@ -82,23 +76,24 @@ suite("Unit Tests", () => {
     // Invalid complete puzzles fail
     test("Invalid puzzles fail", done => {
       const input =
-        "779235418851496372432178956174569283395842761628713549283657194516924837947381625";
+          "779235418851496372432178956174569283395842761628713549283657194516924837947381625",
+        errorBox = document.querySelector("#error-msg");
+
       document.querySelector("#text-input").value = input;
-      Solver.solveButtonPressed()
-      
-      assert.equal(document.querySelector("#error-msg").innerText, "Invalid Solution.");
+      Solver.solveButtonPressed();
+      assert.equal(errorBox.innerText, "Invalid Solution.");
       done();
     });
   });
 
-  suite("Function showSolution()", () => {
+  suite("Function solveButtonPressed()", () => {
     // Returns the expected solution for a valid, incomplete puzzle
     test("Returns the expected solution for an incomplete puzzle", done => {
-      const textArea = document.querySelector("#text-input");
-      textArea.value = puzzle;
+      const textBox = document.querySelector("#text-input");
+      textBox.value = Solver.puzzle;
 
       Solver.solveButtonPressed();
-      assert.deepEqual(textArea.value, solution);
+      assert.deepEqual(textBox.value, Solver.solution);
       done();
     });
   });

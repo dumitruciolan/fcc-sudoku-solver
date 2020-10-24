@@ -3,22 +3,28 @@ const cells = document.querySelectorAll(".sudoku-input"),
   textBox = document.querySelector("#text-input"),
   errorBox = document.querySelector("#error-msg");
 
+// used by tests
+const puzzle =
+    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..",
+  solution =
+    "769235418851496372432178956174569283395842761628713549283657194516924837947381625";
+
 // Load a simple puzzle into the text area
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelector("#text-input").value =
-    "..9..5.1.85.4....2432......1...69.83.9.....6.62.71...9......1945....4.37.4.3..6..";
+  document.querySelector("#text-input").value = puzzle;
   textBoxChanged();
 });
 
-const textBoxChanged = () => {
-  //   user story 5
-  if (/^[1-9.]*$/.test(textBox.value) === false) {
+// verify user character input
+const checkInput = string => {
+  // user stories 5 & 6
+  if (/^[1-9.]*$/.test(string) === false) {
     solveBtn.onclick = "";
     errorBox.innerText = "Error: Invalid Characters";
   }
 
   // user story 9
-  else if (textBox.value.length !== 81) {
+  else if (string.length !== 81) {
     solveBtn.onclick = "";
     errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
   }
@@ -28,36 +34,25 @@ const textBoxChanged = () => {
     solveBtn.onclick = solveButtonPressed;
     errorBox.innerText = "";
   }
+};
+const validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
 
+// textbox string changed?
+const textBoxChanged = () => {
   // user story 2
+  checkInput(textBox.value);
   let textBoxValues = textBox.value.split("");
   textBoxValues.forEach((value, index) => (cells[index].value = value));
   return textBoxValues;
 };
 
+// grid cells changed?
 const gridChanged = () => {
   let textString = "";
 
   // user story 4
   cells.forEach(cell => (textString += cell.value.toString()));
-
-  // user story 6
-  if (/^[1-9.]*$/.test(textString) === false) {
-    solveBtn.onclick = "";
-    errorBox.innerText = "Error: Invalid Characters";
-  }
-
-  // user story 9
-  else if (textString.length !== 81) {
-    solveBtn.onclick = "";
-    errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
-  }
-
-  // recursive backtracking algo step 1
-  else {
-    solveBtn.onclick = solveButtonPressed;
-    errorBox.innerText = "";
-  }
+  checkInput(textString);
 
   return (textBox.value = Array.from(cells).reduce((str, { value }) => {
     value !== "" && validSudokuInput(value) ? (str += value) : (str += ".");
@@ -75,11 +70,17 @@ const canPlace = (board, row, col, value) => {
 
   // Check Box Placement
   let boxTopRow = parseInt(row / 3) * 3; // Returns index of top row of box (0, 3, or 6)
-  let boxLeftColumn = parseInt(col / 3) * 3; // Returns index of left column of box (0, 3 or 6)
-  // Looks through rows
-  for (let k = boxTopRow; k < boxTopRow + 3; k++)
-    // Looks through columns
-    for (let l = boxLeftColumn; l < boxLeftColumn + 3; l++)
+  let boxLeftColumn = parseInt(col / 3) * 3; // Returns index of left column of box (0/3/6)
+  for (
+    let k = boxTopRow;
+    k < boxTopRow + 3;
+    k++ // Looks through rows
+  )
+    for (
+      let l = boxLeftColumn;
+      l < boxLeftColumn + 3;
+      l++ // Looks through columns
+    )
       if (board[k][l] == value) return false;
 
   return true;
@@ -88,10 +89,7 @@ const canPlace = (board, row, col, value) => {
 // attempt to solve the puzzle from a given cell
 const solveFromCell = (board, row, col) => {
   // If on column 9 (outside row), move to next row and reset column to zero
-  if (col === 9) {
-    col = 0;
-    row++;
-  }
+  if (col === 9) (col = 0), row++;
 
   // If on row 9 (outside board), the solution is complete, so return the board
   if (row === 9) return board;
@@ -129,6 +127,23 @@ const generateBoard = values => {
   return board;
 };
 
+// make grid arr unidimensional
+const flatten2DArr = arr => {
+  let oneDimensionArr = [];
+  for (let i = 0; i < arr.length; i++)
+    if (typeof arr[i] == "object") oneDimensionArr += flatten2DArr(arr[i]);
+    else oneDimensionArr += arr[i];
+  return oneDimensionArr;
+};
+
+// sum together grid's elements
+const addElements = string => {
+  string = string.split("");
+  let ElemSum = 0;
+  for (let i = 0; i < string.length; i++) ElemSum += parseInt(string[i], 10);
+  return ElemSum;
+};
+
 // recursive backtracking sudoku algo
 const solveButtonPressed = () => {
   let textBoxValues = textBox.value.split(""),
@@ -137,8 +152,17 @@ const solveButtonPressed = () => {
   // user story 7
   errorBox.innerText = "";
   if (solution === false) {
-    errorBox.innerText = "No Solution.";
     solveBtn.onclick = console.log(errorBox.innerText);
+    errorBox.innerText = "No Solution.";
+    return;
+  }
+
+  // a grid's elements sum that's smaller / bigger than 405
+  // means that a number appears twice on a line, column or
+  // in a box. Therefore, the provided solution is invalid.
+  else if (addElements(flatten2DArr(solution)) !== 405) {
+    solveBtn.onclick = console.log(errorBox.innerText);
+    errorBox.innerText = "Invalid Solution.";
     return;
   }
 
@@ -165,22 +189,21 @@ const clearInput = () => {
 };
 document.querySelector("#clear-button").onclick = clearInput;
 
-const validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
-
 // Export your functions for testing in Node.
 // `try` prevents errors on  the client side
 try {
   module.exports = {
+    puzzle,
+    solution,
+    validSudokuInput,
     textBoxChanged,
     gridChanged,
     canPlace,
     solveButtonPressed,
-    clearInput,
-    validSudokuInput
+    clearInput
   };
 } catch (e) {
   console.log(e);
 }
 
-// invalid complete puzzles don't fail
-// create use cases for successful / unsuccessful complete solution
+// get rid of validSudokuInput?
