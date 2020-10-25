@@ -1,3 +1,5 @@
+import { puzzlesAndSolutions } from "./puzzle-strings.js";
+
 const cells = document.querySelectorAll(".sudoku-input"),
   solveBtn = document.querySelector("#solve-button"),
   textBox = document.querySelector("#text-input"),
@@ -9,40 +11,43 @@ const puzzle =
   solution =
     "769235418851496372432178956174569283395842761628713549283657194516924837947381625";
 
-// Load a simple puzzle into the text area
+// Load a random puzzle into the text area
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelector("#text-input").value = puzzle;
+  document.querySelector("#text-input").value =
+    puzzlesAndSolutions[Math.floor(Math.random() * 5)][0];
   textBoxChanged();
 });
 
 // verify user character input
 const checkInput = string => {
-  // user stories 5 & 6
-  if (/^[1-9.]*$/.test(string) === false) {
-    solveBtn.onclick = "";
-    errorBox.innerText = "Error: Invalid Characters";
-  }
+    // user stories 5 & 6
+    if (/^[1-9.]*$/.test(string) === false) {
+      solveBtn.onclick = "";
+      errorBox.innerText = "Error: Invalid Characters";
+    }
 
-  // user story 9
-  else if (string.length !== 81) {
-    solveBtn.onclick = "";
-    errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
-  }
+    // user story 9
+    else if (string.length !== 81) {
+      solveBtn.onclick = "";
+      errorBox.innerText = "Error: Expected puzzle to be 81 characters long.";
+    }
 
-  // recursive backtracking algo step 1
-  else {
-    solveBtn.onclick = solveButtonPressed;
-    errorBox.innerText = "";
-  }
-};
-const validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
+    // recursive backtracking algo step 1
+    else {
+      solveBtn.onclick = solveButtonPressed;
+      errorBox.innerText = "";
+    }
+  },
+  validSudokuInput = str => parseInt(str) >= 1 && parseInt(str) <= 9 && str;
 
 // textbox string changed?
 const textBoxChanged = () => {
   // user story 2
   checkInput(textBox.value);
+
   let textBoxValues = textBox.value.split("");
   textBoxValues.forEach((value, index) => (cells[index].value = value));
+
   return textBoxValues;
 };
 
@@ -130,17 +135,21 @@ const generateBoard = values => {
 // make grid arr unidimensional
 const flatten2DArr = arr => {
   let oneDimensionArr = [];
+
   for (let i = 0; i < arr.length; i++)
     if (typeof arr[i] == "object") oneDimensionArr += flatten2DArr(arr[i]);
     else oneDimensionArr += arr[i];
+
   return oneDimensionArr;
 };
 
 // sum together grid's elements
 const addElements = string => {
-  string = string.split("");
   let ElemSum = 0;
+
+  string = string.split("");
   for (let i = 0; i < string.length; i++) ElemSum += parseInt(string[i], 10);
+
   return ElemSum;
 };
 
@@ -198,12 +207,9 @@ try {
     validSudokuInput,
     textBoxChanged,
     gridChanged,
-    canPlace,
     solveButtonPressed,
     clearInput
   };
 } catch (e) {
   console.log(e);
 }
-
-// get rid of validSudokuInput?
